@@ -1,0 +1,104 @@
+// This is your Prisma schema file
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Ingredient {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  imageFile   Bytes?   // For storing uploaded images
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Base unit for the ingredient (e.g., gramos, mililitros)
+  baseUnit    String   @default("gramos")
+
+  // Custom measurement units
+  customUnits CustomUnit[]
+  
+  // Nutritional values per 100g
+  calories      Float @default(0)
+  carbs         Float @default(0)
+  fiber         Float @default(0)
+  sugar         Float @default(0)
+  totalFat      Float @default(0)
+  protein       Float @default(0)
+
+  // Relations
+  recipeItems   RecipeItem[]
+}
+
+model CustomUnit {
+  id            String     @id @default(cuid())
+  name          String     // e.g., "Taza", "Cucharada"
+  amount        Float      // How many base units equal one custom unit
+  ingredient    Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  ingredientId  String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([ingredientId, name])
+}
+
+model Recipe {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  servings    Int      @default(1)
+  instructions String[]
+  prepTime    Int?     // in minutes
+  cookTime    Int?     // in minutes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  items       RecipeItem[]
+  mealPlans   MealPlan[]
+}
+
+model RecipeItem {
+  id              String     @id @default(cuid())
+  recipe          Recipe     @relation(fields: [recipeId], references: [id])
+  recipeId        String
+  ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId    String
+  amount          Float
+  unit            String     // Can be baseUnit or name of a customUnit
+}
+
+model Person {
+  id              String   @id @default(cuid())
+  name            String
+  targetCalories  Float?
+  targetCarbs     Float?
+  targetProtein   Float?
+  targetFat       Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  mealPlans       MealPlan[]
+}
+
+model MealPlan {
+  id        String   @id @default(cuid())
+  date      DateTime
+  mealType  String   // breakfast, lunch, dinner, snack
+  person    Person   @relation(fields: [personId], references: [id])
+  personId  String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id])
+  recipeId  String
+  servings  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([personId, date, mealType])
+}
